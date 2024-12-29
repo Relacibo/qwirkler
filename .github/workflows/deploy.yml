@@ -22,7 +22,7 @@ jobs:
         uses: withastro/action@v2
 
       - name: Upload static files as artifact
-        id: deployment
+        id: deploy-artifacts
         uses: actions/upload-pages-artifact@v3 # or specific "vX.X.X" version tag for this action
         with:
           path: dist/
