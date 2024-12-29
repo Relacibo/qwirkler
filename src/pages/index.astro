@@ -11,6 +11,10 @@ import Layout from "../layouts/Layout.astro";
     const playerInput = document.querySelector(
       "#playerInput"
     )! as HTMLTextAreaElement;
+    let playerNames = localStorage.getItem("qwirkle.playerNames");
+    if (typeof playerNames !== "undefined" && playerNames !== null) {
+      playerInput.value = playerNames;
+    }
     butt.addEventListener("click", () => {
       let players = playerInput.value.split(/\r?\n/).flatMap((elem) => {
         let elem2 = elem.trim();
@@ -24,7 +28,12 @@ import Layout from "../layouts/Layout.astro";
         alert("Playerliste leer!");
         return;
       }
-      window.location.href = import.meta.env.BASE_URL + "/games/qwirkle?players=" + players.join(",");
+
+      localStorage.setItem("qwirkle.playerNames", players.join("\n"));
+      window.location.href =
+        import.meta.env.BASE_URL +
+        "/games/qwirkle?players=" +
+        players.join(",");
     });
   </script>
   <h1>Qwirkler</h1>
