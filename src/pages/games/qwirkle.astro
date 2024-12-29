@@ -1,0 +1,201 @@
+---
+import Layout from "../../layouts/Layout.astro";
+---
+
+<script>
+  let playersString = new URLSearchParams(document.location.search).get(
+    "players"
+  );
+  if (typeof playersString === "undefined" || playersString === null) {
+    window.location.href = "/";
+  }
+  let players = playersString!.split(",");
+  let playerCount = players.length;
+
+  let scoresString = localStorage.getItem("qwirkle.scores");
+  let scores: number[];
+
+  const saveScores = () => {
+    localStorage.setItem("qwirkle.scores", scores.join(","));
+  };
+  if (typeof scoresString === "undefined" || scoresString == null) {
+    localStorage.setItem("qwirkle.scores", "");
+    scores = [];
+  } else {
+    scores = (scoresString.split(",") || []).flatMap((s) => {
+      let res = parseInt(s, 10);
+      if (Number.isNaN(res)) {
+        return [];
+      } else {
+        return [res];
+      }
+    });
+  }
+
+  let table = document.createElement("table");
+  let thead = document.createElement("thead");
+  let head = document.createElement("tr");
+  players.forEach((player) => {
+    let caption = document.createElement("th");
+    var text = document.createTextNode(player);
+    caption.appendChild(text);
+    head.appendChild(caption);
+  });
+  thead.appendChild(head);
+  table.appendChild(thead);
+  const tableContainer = document.querySelector("#scoreTableContainer")!;
+  tableContainer.appendChild(table);
+
+  let tbody = document.createElement("tbody");
+  table.appendChild(tbody);
+
+  let cursor = 0;
+
+  const getCell = (num: number) => {
+    let row = Math.floor(num / playerCount);
+    let col = num % playerCount;
+    console.log(row);
+    console.log(col);
+    return document.querySelector(
+      `#input-row${row}-col${col}`
+    ) as HTMLInputElement | null;
+  };
+  const selectCell = (newCursor: number) => {
+    let cell = getCell(newCursor);
+    console.log(cell);
+    cell?.focus();
+  };
+
+  const goForward = () => {
+    cursor++;
+    if (cursor >= createNextCursor) {
+      createCell().focus();
+    } else {
+      selectCell(cursor);
+    }
+  };
+
+  let createNextCursor = 0;
+  const createCell = () => {
+    let row = Math.floor(createNextCursor / playerCount);
+    let col = createNextCursor % playerCount;
+    let rowElement: HTMLTableRowElement;
+    if (col == 0) {
+      rowElement = document.createElement("tr");
+      rowElement.id = `row${row}`;
+      tbody.appendChild(rowElement);
+    } else {
+      rowElement = document.querySelector(`#row${row}`)!;
+    }
+    const cellElement = document.createElement("td");
+    cellElement.id = `row${row}-col${col}`;
+    rowElement.appendChild(cellElement);
+
+    const input = document.createElement("input");
+    input.id = `input-row${row}-col${col}`;
+    input.addEventListener("onfocusin", () => {
+      cursor = createNextCursor;
+    });
+    input.addEventListener("onfocusout", () => {
+      let num = parseInt(input.value);
+      if (Number.isNaN(num)) {
+        input.value = "";
+        scores[createNextCursor] = 0;
+        return;
+      }
+      scores[createNextCursor] = num;
+      saveScores();
+    });
+    cellElement.appendChild(input);
+    createNextCursor++;
+    return input;
+  };
+
+  window.addEventListener("keypress", (event) => {
+    switch (event.key) {
+      case "Enter":
+        goForward();
+        return;
+    }
+  });
+
+  window.addEventListener("keydown", (event) => {
+    let cursorNew;
+    switch (event.key) {
+      case "ArrowDown":
+        cursorNew = cursor + playerCount;
+        if (cursorNew < createNextCursor) {
+          cursor = cursorNew;
+          selectCell(cursorNew);
+        }
+        return;
+      case "ArrowUp":
+        cursorNew = cursor - playerCount;
+        if (cursorNew >= 0) {
+          cursor = cursorNew;
+          selectCell(cursorNew);
+        }
+        return;
+      case "ArrowRight":
+        cursorNew = cursor + 1;
+        if (cursorNew >= 0) {
+          cursor = cursorNew;
+          selectCell(cursorNew);
+        }
+        return;
+      case "ArrowLeft":
+        cursorNew = cursor - 1;
+        if (cursorNew < createNextCursor) {
+          cursor = cursorNew;
+          selectCell(cursorNew);
+        }
+        return;
+    }
+  });
+
+  scores.forEach((score) => {
+    let cell = createCell();
+    cell.value = score + "";
+  });
+  const back = document.querySelector("#back")!;
+  back.addEventListener("click", () => {
+    if (cursor > 0) {
+      cursor--;
+    }
+    selectCell(cursor);
+  });
+
+  const cont = document.querySelector("#cont")!;
+  cont.addEventListener("click", goForward);
+  const reset = document.querySelector("#reset")!;
+  reset.addEventListener("click", () => {
+    let p = confirm("Sicher?");
+
+    if (p) {
+      localStorage.removeItem("qwirkle.scores");
+      window.location.reload();
+    }
+  });
+  const newGame = document.querySelector("#newGame")!;
+  newGame.addEventListener("click", () => {
+    let p = confirm("Sicher?");
+
+    if (p) {
+      localStorage.removeItem("qwirkle.scores");
+      window.location.href = "/";
+    }
+  });
+</script>
+<Layout>
+  <button id="newGame" class="newGame">Neues Spiel</button>
+  <button id="back" class="back">Zurück</button>
+  <button id="cont" class="cont">Weiter</button>
+  <button id="reset" class="reset">Zurücksetzen</button>
+  <div id="scoreTableContainer"></div>
+</Layout>
+
+<style>
+  #scoreTableContainer :global(td, th) {
+    width: 12rem;
+  }
+</style>
