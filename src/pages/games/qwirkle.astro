@@ -7,7 +7,7 @@ import Layout from "../../layouts/Layout.astro";
     "players"
   );
   if (typeof playersString === "undefined" || playersString === null) {
-    window.location.href = "/";
+    window.location.href = import.meta.env.BASE_URL;
   }
   let players = playersString!.split(",");
   let playerCount = players.length;
@@ -182,7 +182,7 @@ import Layout from "../../layouts/Layout.astro";
 
     if (p) {
       localStorage.removeItem("qwirkle.scores");
-      window.location.href = "/";
+      window.location.href = import.meta.env.BASE_URL;
     }
   });
 </script>
