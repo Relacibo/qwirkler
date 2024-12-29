@@ -20,6 +20,13 @@ jobs:
 
       - name: Install, build, and upload your site
         uses: withastro/action@v2
+
+
+      - name: Upload static files as artifact
+        id: deployment
+        uses: actions/upload-pages-artifact@v3 # or specific "vX.X.X" version tag for this action
+        with:
+          path: dist/
         
       - name: Deploy to GitHub Pages
         id: deployment
