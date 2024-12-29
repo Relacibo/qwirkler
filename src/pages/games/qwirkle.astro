@@ -4,7 +4,7 @@ import Layout from "../../layouts/Layout.astro";
 
 <script>
   let playersString = new URLSearchParams(document.location.search).get(
-    "players"
+    "players",
   );
   if (typeof playersString === "undefined" || playersString === null) {
     window.location.href = import.meta.env.BASE_URL;
@@ -15,9 +15,28 @@ import Layout from "../../layouts/Layout.astro";
   let scoresString = localStorage.getItem("qwirkle.scores");
   let scores: number[];
 
-  const saveScores = () => {
-    localStorage.setItem("qwirkle.scores", scores.join(","));
-  };
+  let table = document.createElement("table");
+  let thead = document.createElement("thead");
+  let head = document.createElement("tr");
+  players.forEach((player) => {
+    let caption = document.createElement("th");
+    var text = document.createTextNode(player);
+    var playerScoreSpan = document.createElement("span");
+    playerScoreSpan.id = `playerScore-${player}`;
+    caption.appendChild(text);
+    caption.appendChild(playerScoreSpan);
+    head.appendChild(caption);
+  });
+  thead.appendChild(head);
+  table.appendChild(thead);
+  const tableContainer = document.querySelector("#scoreTableContainer")!;
+  tableContainer.appendChild(table);
+
+  let tbody = document.createElement("tbody");
+  table.appendChild(tbody);
+
+  let cursor = 0;
+
   if (typeof scoresString === "undefined" || scoresString == null) {
     localStorage.setItem("qwirkle.scores", "");
     scores = [];
@@ -32,53 +51,10 @@ import Layout from "../../layouts/Layout.astro";
     });
   }
 
-  let table = document.createElement("table");
-  let thead = document.createElement("thead");
-  let head = document.createElement("tr");
-  players.forEach((player) => {
-    let caption = document.createElement("th");
-    var text = document.createTextNode(player);
-    caption.appendChild(text);
-    head.appendChild(caption);
-  });
-  thead.appendChild(head);
-  table.appendChild(thead);
-  const tableContainer = document.querySelector("#scoreTableContainer")!;
-  tableContainer.appendChild(table);
-
-  let tbody = document.createElement("tbody");
-  table.appendChild(tbody);
-
-  let cursor = 0;
-
-  const getCell = (num: number) => {
-    let row = Math.floor(num / playerCount);
-    let col = num % playerCount;
-    console.log(row);
-    console.log(col);
-    return document.querySelector(
-      `#input-row${row}-col${col}`
-    ) as HTMLInputElement | null;
-  };
-  const selectCell = (newCursor: number) => {
-    let cell = getCell(newCursor);
-    console.log(cell);
-    cell?.focus();
-  };
-
-  const goForward = () => {
-    cursor++;
-    if (cursor >= createNextCursor) {
-      createCell().focus();
-    } else {
-      selectCell(cursor);
-    }
-  };
-
   let createNextCursor = 0;
-  const createCell = () => {
-    let row = Math.floor(createNextCursor / playerCount);
-    let col = createNextCursor % playerCount;
+  const createCell = (cnc: number) => {
+    let row = Math.floor(cnc / playerCount);
+    let col = cnc % playerCount;
     let rowElement: HTMLTableRowElement;
     if (col == 0) {
       rowElement = document.createElement("tr");
@@ -93,22 +69,80 @@ import Layout from "../../layouts/Layout.astro";
 
     const input = document.createElement("input");
     input.id = `input-row${row}-col${col}`;
-    input.addEventListener("onfocusin", () => {
-      cursor = createNextCursor;
+    input.addEventListener("focusin", () => {
+      cursor = cnc;
     });
-    input.addEventListener("onfocusout", () => {
+    input.addEventListener("focusout", () => {
       let num = parseInt(input.value);
       if (Number.isNaN(num)) {
-        input.value = "";
-        scores[createNextCursor] = 0;
-        return;
+        input.value = "0";
+        num = 0;
       }
-      scores[createNextCursor] = num;
+      scores[cnc] = num;
+      updateScores();
       saveScores();
     });
     cellElement.appendChild(input);
-    createNextCursor++;
     return input;
+  };
+
+  scores.forEach((score) => {
+    let cell = createCell(createNextCursor);
+    createNextCursor++;
+    cell.value = score + "";
+  });
+
+  const updateScores = () => {
+    let dict: { [key: string]: number } = {};
+    scores.entries().forEach(([i, score]) => {
+      let key = players[i % playerCount]!;
+      let value = dict[key] || 0;
+      dict[key] = value + score;
+    });
+    for (let player in dict) {
+      let value = dict[player];
+      let elem = document.querySelector(`#playerScore-${player}`)!;
+      elem.innerHTML = value + "";
+    }
+  };
+
+  const getCell = (num: number) => {
+    let row = Math.floor(num / playerCount);
+    let col = num % playerCount;
+    return document.querySelector(
+      `#input-row${row}-col${col}`,
+    ) as HTMLInputElement | null;
+  };
+  const selectCell = (newCursor: number) => {
+    let cell = getCell(newCursor);
+    if (typeof cell === "undefined" || cell === null) {
+      return;
+    }
+    cell.select();
+  };
+
+  updateScores();
+  let select = 0;
+  if (scores.length === 0) {
+    createCell(createNextCursor);
+    createNextCursor++;
+  } else {
+    select = scores.length - 1;
+  }
+  selectCell(select);
+
+  const saveScores = () => {
+    localStorage.setItem("qwirkle.scores", scores.join(","));
+  };
+
+  const goForward = () => {
+    cursor++;
+    if (cursor >= createNextCursor) {
+      createCell(createNextCursor).focus();
+      createNextCursor++;
+    } else {
+      selectCell(cursor);
+    }
   };
 
   window.addEventListener("keypress", (event) => {
@@ -138,24 +172,19 @@ import Layout from "../../layouts/Layout.astro";
         return;
       case "ArrowRight":
         cursorNew = cursor + 1;
-        if (cursorNew >= 0) {
+        if (cursorNew < createNextCursor) {
           cursor = cursorNew;
           selectCell(cursorNew);
         }
         return;
       case "ArrowLeft":
         cursorNew = cursor - 1;
-        if (cursorNew < createNextCursor) {
+        if (cursorNew >= 0) {
           cursor = cursorNew;
           selectCell(cursorNew);
         }
         return;
     }
-  });
-
-  scores.forEach((score) => {
-    let cell = createCell();
-    cell.value = score + "";
   });
   const back = document.querySelector("#back")!;
   back.addEventListener("click", () => {
@@ -197,5 +226,8 @@ import Layout from "../../layouts/Layout.astro";
 <style>
   #scoreTableContainer :global(td, th) {
     width: 12rem;
+  }
+  #scoreTableContainer :global(span) {
+    margin-left: 5px;
   }
 </style>
